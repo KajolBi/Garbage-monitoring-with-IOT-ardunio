@@ -1,0 +1,152 @@
+String ssid="xyz";
+String password="1234567";
+const String APIKEY ="77d29e3f868c3a36db9124ceb51b3532f70a2488b442a7bae";
+const String DEVICE="IOT@kajol.kajolB";
+String strdistance = "";
+String data;
+String server = "82.223.244.60";
+int trigPin = 11;
+int echoPin = 12;
+int buzpin=10;
+long cm;
+float per;
+long distance;
+int chpin = 5;
+
+
+void setup() {
+  pinMode(buzpin,OUTPUT);
+  Serial.begin(115200);
+  Serial1.begin(115200);
+  digitalWrite(chpin , HIGH);
+  Serial.println("This is ultrasonic sensor :");
+
+  
+ reset();
+  Serial1.println("AT+CWMODE=3");
+if (Serial1.find("OK") ) Serial.println("ModE 3 activated");
+  connectWifi();
+}
+void reset() {
+  Serial1.println("AT+RST");
+  delay(300);  
+  if (Serial1.find("OK") ) Serial.println("Module Reset");
+  if (Serial1.available()) {
+    Serial.write(Serial1.read());}}
+// connect to wifi network
+    void connectWifi() {
+  String cmd = "AT+CWJAP=\"" + ssid + "\",\"" + password + "\"";
+  Serial.println(cmd);
+  Serial1.println(cmd);
+  delay(500);
+
+  if (Serial1.find("OK")) {
+    Serial.println("Connected!");
+  }
+  else {
+    connectWifi();
+    Serial.println("Cannot connect to wifi");
+  }
+}
+void loop() {
+ long duration, inches; // defining variables
+  pinMode(trigPin, OUTPUT);// trigger output will remain low for 2us.
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH); // trigger output will remain high for 10us.
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  pinMode(echoPin, INPUT);
+  duration = pulseIn(echoPin, HIGH);
+  inches = (duration/ 74 / 2);// converts duration into inches.
+  cm = (duration/ 29 / 2);
+  per=(cm/0.19);
+ // Serial.println("percentage :");
+  //Serial.println(per);
+  
+  delay(500);
+if(cm<=7)
+  {
+    
+   Serial.println("**********************************     DUSTBIN IS 90% FULL  , HIGH ALART *********************************");
+   
+   digitalWrite(buzpin,HIGH);
+   delay(500);
+   digitalWrite(buzpin,LOW);
+   delay(400);
+ 
+   httppost();
+  }
+  
+  else if(cm >7&&cm<=14 )
+  {
+   Serial.println("**********************************    DUSTBIN IS  60% FULL  ********************************* ");
+
+httppost();
+  }
+ 
+ else if(cm >14&&cm <=17)
+  {
+  Serial.println("**********************************    DUSTBIN IS  10% FULL  , HIGH ALART *********************************");
+  
+  httppost();
+  }
+  else if(cm >18&&cm <=500)
+  {
+  Serial.println(" ********************************    I AM EMPTY !!!!!!!!!!!!!!!!!!!!!!!!");
+
+  httppost();
+  }
+ 
+}
+void httppost() 
+{
+  Serial1.println("AT+CIPSTART=\"TCP\",\"" + server + "\",80");
+  delay(500);
+  if ( Serial1.find("OK")) {
+    Serial.println("TCP connection ready");
+  }
+  else {
+    Serial.println("**TCP connection ready **");
+  }
+  String getStr = "{\"protocol\":\"v2\",\"device\":\""+DEVICE+"\",\"at\":\"now\",\"data\":{\"percent\":\""+per+"\"""}}";
+  
+  String postRequest = "POST /streams HTTP/1.1\n""Host: " + server + "\n" "Accept:application/json\n""User-Agent:Arduino-Carriots\n""Content-Type:application/json\n""carriots.apikey:" + APIKEY + "\n""Content-length:" + getStr.length() + "\n""Connection: close\n\n";
+  postRequest += getStr;
+  String sendCmd = "AT+CIPSEND=";//determine the number of caracters to be sent.
+
+  Serial1.print(sendCmd);
+  Serial1.println(postRequest.length() );
+
+  delay(500);
+
+  if (Serial1.find(">")) {
+    Serial.println("Sending.."); Serial1.print(postRequest);
+
+    if ( Serial1.find("SEND OK")) {
+      Serial.println("Packet sent");
+      while (Serial1.available()) {
+        String RSerial1 = Serial1.readString();
+        Serial.println(RSerial1);
+      }
+
+      // close the connection
+      Serial1.println("AT+CIPCLOSE");
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
